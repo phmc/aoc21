@@ -23,25 +23,34 @@ def _ints_from_stream(f: IO[str]) -> Iterator[int]:
 T = typing.TypeVar("T")
 
 
-def _consecutive_elements(it: Iterator[T]) -> Iterator[tuple[T, T]]:
+def _consecutive_elements(src: Iterator[T], *, n) -> Iterator[tuple[T, ...]]:
     """
-    Yield consecutive elements from an iterator as `(current, previous)` pairs.
+    Yield consecutive elements from an iterator as `n`-tuples.
 
-    The first pair consists of the second and first elements.
+    Elements are in earliest-to-latest order in each tuple.
+
+    The first tuple consists of the first, second ... nth elements; the
+    second consists of the second, third, ..., (n+1)th elements; and so on.
 
     """
-    it, it_incr = itertools.tee(it, 2)
-    try:
-        next(it_incr, None)
-    except StopIteration:
-        return
-    yield from zip(it_incr, it)
+    incr_its = itertools.tee(src, n)
+    # Horrendous for large n. Don't care yet.
+    for idx in range(1, n + 1):
+        for it in incr_its[idx:]:
+            try:
+                next(it)
+            except StopIteration:
+                # Fewer than n elements in total.
+                return
+    yield from zip(*incr_its)
 
 
 def main(argv: list[str]) -> None:
     with open(argv[0]) as f:
         depths = _ints_from_stream(f)
-        print(sum(int(curr > prev) for curr, prev in _consecutive_elements(depths)))
+        windows = _consecutive_elements(depths, n=3)
+        sums = (sum(window) for window in windows)
+        print(sum(int(curr > prev) for prev, curr in _consecutive_elements(sums, n=2)))
 
 
 if __name__ == "__main__":
