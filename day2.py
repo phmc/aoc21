@@ -17,6 +17,14 @@ class Direction(enum.Enum):
 
 
 @dataclasses.dataclass
+class Move:
+    """Represents a move in a particular direction."""
+
+    direction: Direction
+    amount: int
+
+
+@dataclasses.dataclass
 class Position:
     """Represents a position in space."""
 
@@ -24,34 +32,16 @@ class Position:
     y: int
     aim: int
 
-    def __add__(self, other: Any) -> Position:
-        """
-        Given a position, add its coordinates to this position.
-
-        Replace this position's aim with the other position's aim.
-
-        """
-        if not isinstance(other, Position):
-            return NotImplemented
-        else:
-            return Position(self.x + other.x, self.y + other.y, other.aim)
-
-
-@dataclasses.dataclass
-class Move:
-    """Represents a move in a particular direction."""
-
-    direction: Direction
-    amount: int
-
-    def offset(self, aim: int) -> Position:
-        """Return the change in position resulting from this movement."""
-        if self.direction is Direction.FORWARD:
-            return Position(self.amount, self.amount * aim, aim)
-        elif self.direction is Direction.DOWN:
-            return Position(0, 0, aim + self.amount)
-        elif self.direction is Direction.UP:
-            return Position(0, 0, aim - self.amount)
+    def moved(self, move: Move) -> Position:
+        """Return a new position, moving from the current position."""
+        if move.direction is Direction.FORWARD:
+            return dataclasses.replace(
+                self, x=self.x + move.amount, y=self.y + move.amount * self.aim
+            )
+        elif move.direction is Direction.DOWN:
+            return dataclasses.replace(self, aim=self.aim + move.amount)
+        elif move.direction is Direction.UP:
+            return dataclasses.replace(self, aim=self.aim - move.amount)
         else:
             raise NotImplementedError
 
@@ -67,7 +57,7 @@ def _eval_moves(start: Position, moves: Iterable[Move]) -> Position:
     """Return the new position after making the given moves."""
     position = start
     for move in moves:
-        position += move.offset(position.aim)
+        position = position.moved(move)
     return position
 
 
