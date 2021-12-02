@@ -22,13 +22,19 @@ class Position:
 
     x: int
     y: int
+    aim: int
 
     def __add__(self, other: Any) -> Position:
-        """Given a position, add its coordinates to this position."""
+        """
+        Given a position, add its coordinates to this position.
+
+        Replace this position's aim with the other position's aim.
+
+        """
         if not isinstance(other, Position):
             return NotImplemented
         else:
-            return Position(self.x + other.x, self.y + other.y)
+            return Position(self.x + other.x, self.y + other.y, other.aim)
 
 
 @dataclasses.dataclass
@@ -38,14 +44,14 @@ class Move:
     direction: Direction
     amount: int
 
-    def offset(self) -> Position:
+    def offset(self, aim: int) -> Position:
         """Return the change in position resulting from this movement."""
         if self.direction is Direction.FORWARD:
-            return Position(self.amount, 0)
+            return Position(self.amount, self.amount * aim, aim)
         elif self.direction is Direction.DOWN:
-            return Position(0, self.amount)
+            return Position(0, 0, aim + self.amount)
         elif self.direction is Direction.UP:
-            return Position(0, -self.amount)
+            return Position(0, 0, aim - self.amount)
         else:
             raise NotImplementedError
 
@@ -59,13 +65,16 @@ def _parse_moves(f: IO) -> Iterator[Move]:
 
 def _eval_moves(start: Position, moves: Iterable[Move]) -> Position:
     """Return the new position after making the given moves."""
-    return sum((move.offset() for move in moves), start=start)
+    position = start
+    for move in moves:
+        position += move.offset(position.aim)
+    return position
 
 
 def main(argv: list[str]) -> None:
     with open(argv[0]) as f:
         moves = _parse_moves(f)
-        position = _eval_moves(Position(0, 0), moves)
+        position = _eval_moves(Position(0, 0, 0), moves)
         print(position.x * position.y)
 
 
