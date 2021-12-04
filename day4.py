@@ -50,21 +50,27 @@ class Board:
         return final_call * sum(itertools.chain.from_iterable(self.rows))
 
 
-def _find_winner(calls: Iterable[int], boards: Sequence[Board]) -> tuple[Board, int]:
+def _find_winners(
+    calls: Iterable[int], boards: Iterable[Board]
+) -> Iterator[tuple[Board, int]]:
     """
-    Return the first winning board and last called number for the given calls.
+    Yield (winning board, latest called number) pairs, in order of winning.
 
-    This mutates the boards and returns the winning board in its final, marked
+    This mutates the boards and yields each winning board in its final, marked
     state.
 
     """
+    contenders = list(boards)
     for call in calls:
-        for board in boards:
+        for board in contenders:
             board.mark(call)
+        remaining = []
+        for board in contenders:
             if board.has_won():
-                return board, call
-    else:
-        raise ValueError("Didn't find a winner")
+                yield board, call
+            else:
+                remaining.append(board)
+        contenders = remaining
 
 
 def _parse_calls(lines: Iterator[str]) -> Iterator[int]:
@@ -91,8 +97,9 @@ def main(argv: list[str]) -> None:
     with open(argv[0]) as f:
         calls = _parse_calls(f)
         boards = _parse_boards(f)
-        winner, final_call = _find_winner(calls, list(boards))
-        print(winner.score(final_call))
+        first_win, *_, last_win = _find_winners(calls, boards)
+        print(first_win[0].score(first_win[1]))
+        print(last_win[0].score(last_win[1]))
 
 
 if __name__ == "__main__":
