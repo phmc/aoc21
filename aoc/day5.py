@@ -76,18 +76,14 @@ def _parse_input(lines: Iterable[str]) -> Iterator[Line]:
 
 def main(argv: list[str]) -> None:
     with open(argv[0]) as f:
-        lines = list(_parse_input(f))
-        hv_coverage = collections.Counter(
-            itertools.chain.from_iterable(
-                line.points()
-                for line in lines
-                if line.is_horizontal() or line.is_vertical()
+        all_lines = list(_parse_input(f))
+        hv_lines = (
+            line for line in all_lines if line.is_horizontal() or line.is_vertical()
+        )
+        for lines in hv_lines, all_lines:
+            coverage = collections.Counter(
+                itertools.chain.from_iterable(line.points() for line in lines)
             )
-        )
-        all_coverage = collections.Counter(
-            itertools.chain.from_iterable(line.points() for line in lines)
-        )
-        for coverage in hv_coverage, all_coverage:
             print(sum(int(point_coverage >= 2) for point_coverage in coverage.values()))
 
 
