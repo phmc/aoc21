@@ -35,6 +35,11 @@ class Line:
         """Is this line vertical?"""
         return self.end.x == self.start.x
 
+    @property
+    def m(self) -> int:
+        """Gradient of this line; undefined if vertical."""
+        return (self.end.y - self.start.y) / (self.end.x - self.start.x)
+
     def points(self) -> Iterator[Point]:
         """Yield all integer-valued points on this line."""
         xs: Iterator[int]
@@ -46,6 +51,9 @@ class Line:
         elif self.is_horizontal():
             xs = _range(self.start.x, self.end.x)
             ys = itertools.repeat(self.start.y)
+        elif self.m in (-1, 1):
+            xs = _range(self.start.x, self.end.x)
+            ys = _range(self.start.y, self.end.y)
         else:
             raise NotImplementedError
 
@@ -68,15 +76,19 @@ def _parse_input(lines: Iterable[str]) -> Iterator[Line]:
 
 def main(argv: list[str]) -> None:
     with open(argv[0]) as f:
-        lines = _parse_input(f)
-        coverage = collections.Counter(
+        lines = list(_parse_input(f))
+        hv_coverage = collections.Counter(
             itertools.chain.from_iterable(
                 line.points()
                 for line in lines
                 if line.is_horizontal() or line.is_vertical()
             )
         )
-        print(sum(int(point_coverage >= 2) for point_coverage in coverage.values()))
+        all_coverage = collections.Counter(
+            itertools.chain.from_iterable(line.points() for line in lines)
+        )
+        for coverage in hv_coverage, all_coverage:
+            print(sum(int(point_coverage >= 2) for point_coverage in coverage.values()))
 
 
 if __name__ == "__main__":
