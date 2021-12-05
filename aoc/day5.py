@@ -12,6 +12,14 @@ Point = collections.namedtuple("Point", ["x", "y"])
 Point.__doc__ = "Point in 2D space."
 
 
+def _range(start: int, end: int) -> Iterator[int]:
+    """Yield integers in the interval `[start, end]`, in that order."""
+    if start <= end:
+        yield from range(start, end + 1)
+    else:
+        yield from range(start, end - 1, -1)
+
+
 @dataclasses.dataclass
 class Line:
     """Line in 2D space."""
@@ -34,16 +42,10 @@ class Line:
 
         if self.is_vertical():
             xs = itertools.repeat(self.start.x)
-            if self.start.y <= self.end.y:
-                ys = iter(range(self.start.y, self.end.y + 1))
-            else:
-                ys = reversed(range(self.end.y, self.start.y + 1))
+            ys = _range(self.start.y, self.end.y)
         elif self.is_horizontal():
+            xs = _range(self.start.x, self.end.x)
             ys = itertools.repeat(self.start.y)
-            if self.start.x <= self.end.x:
-                xs = iter(range(self.start.x, self.end.x + 1))
-            else:
-                xs = reversed(range(self.end.x, self.start.x + 1))
         else:
             raise NotImplementedError
 
