@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import functools
+import math
 import sys
 from typing import Iterable, Iterator, Optional
 
@@ -33,25 +34,18 @@ def _calculate_triangular_cost(target: int, positions: Iterable[int]) -> int:
 
 def _calculate_triangular_optimum(positions: Iterable[int]) -> int:
     """Return the optimal position for a triangular metric."""
-    # Assume that there is no local (but not global) minimum, and bisect.
-    # Haven't proved this...
+    # Minimum is within +/-0.5 of the mean of the positions.
+    #
+    # To see this, differentiate `sum((x - n)(x - n + 1)/2)` where n takes each
+    # position over the sum.
     positions = list(positions)
-    lower = min(positions)
-    lower_cost = _calculate_triangular_cost(lower, positions)
-    upper = max(positions)
-    upper_cost = _calculate_triangular_cost(upper, positions)
-
-    while upper - lower > 1:
-        if lower_cost <= upper_cost:
-            # Selecting the lower half, so prefer a higher new upper bound.
-            upper = (upper + lower + 1) // 2
-            upper_cost = _calculate_triangular_cost(upper, positions)
-        else:
-            # Vice-versa, prefer a lower value.
-            lower = (upper + lower) // 2
-            lower_cost = _calculate_triangular_cost(lower, positions)
-
-    if lower_cost < upper_cost:
+    mean = sum(positions) / len(positions)
+    # Need to check both to account for possible cumulative effect of 0.5
+    # deviation plus rounding.
+    lower, upper = math.floor(mean), math.ceil(mean)
+    if _calculate_triangular_cost(lower, positions) < _calculate_triangular_cost(
+        upper, positions
+    ):
         return lower
     else:
         return upper
