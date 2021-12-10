@@ -79,14 +79,11 @@ def _decode_signals(signals: Iterable[Signal]) -> dict[Signal, int]:
 
     assert set(decoded) == {1, 2, 3, 4, 6, 7, 8, 9}
 
-    # Only 0 and 5 remain.
-    #   1 & 0 has length 2
-    #   1 & 5 has length 1
+    # Only 0 and 5 remain, can distinguish those by length.
     for signal in set(remaining):
-        check = decoded[1] & signal
-        if len(check) == 2:
+        if len(signal) == 6:
             record(0, signal)
-        elif len(check) == 1:
+        elif len(signal) == 5:
             record(5, signal)
 
     assert not remaining
