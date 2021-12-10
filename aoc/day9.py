@@ -50,7 +50,9 @@ def _find_basin(m: Map, low_point: Point) -> Iterator[Point]:
         candidates.update(
             neighbour
             for neighbour in _get_neighbours(m, current)
-            if neighbour not in visited and m[current] < m[neighbour] < 9
+            if neighbour not in visited
+            and neighbour not in candidates
+            and m[neighbour] < 9
         )
 
 
