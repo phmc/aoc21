@@ -4,7 +4,7 @@ import collections
 import itertools
 import sys
 
-from typing import Iterable, Iterator
+from typing import Iterable, Optional
 
 
 Point = collections.namedtuple("Point", ["x", "y"])
@@ -75,10 +75,24 @@ def main(argv: list[str]) -> None:
     with open(argv[0]) as f:
         energies = _parse_input(f)
         total_flashes = 0
-        for _ in range(100):
+        sync_flash_step: Optional[int] = None
+
+        # Count from 1 like a bunch of absolute winners...
+        for step in range(1, 101):
             flashes, energies = _step(energies)
+            if flashes == len(energies):
+                sync_flash_step = step
             total_flashes += flashes
         print(total_flashes)
+
+        if sync_flash_step is None:
+            # Already ran the `step`th step so start from + 1
+            for step in itertools.count(step + 1):
+                flashes, energies = _step(energies)
+                if flashes == len(energies):
+                    sync_flash_step = step
+                    break
+        print(sync_flash_step)
 
 
 if __name__ == "__main__":
