@@ -11,17 +11,47 @@ Cave = typing.NewType("Cave", str)
 # Mapping from caves to neighbours.
 Map = dict[Cave, set[Cave]]
 
+_START = Cave("start")
+_END = Cave("end")
+
 
 def _is_big(cave: Cave) -> bool:
     """Return `True` if this cave is big."""
     return cave.isupper()
 
 
-def _explore(path: Sequence[Cave], m: Map) -> Iterator[tuple[Cave, ...]]:
+def _get_visits(path: Sequence[Cave]) -> tuple[set[Cave], bool]:
+    """
+    Return which caves have been visited.
+
+    The second element of the returned tuple is `True` if some small cave has
+    already been visited twice on this path, `False` otherwise.
+
+    """
+    visited: set[Cave] = set()
+    two_small_visits = False
+    for cave in path:
+        if cave in visited and not _is_big(cave):
+            two_small_visits = True
+        visited.add(cave)
+    return visited, two_small_visits
+
+
+def _explore(
+    path: Sequence[Cave], m: Map, only_one_small_visit: bool
+) -> Iterator[tuple[Cave, ...]]:
     """Yield all possible next steps for a path."""
-    visited = set(path)
+    visited, two_small_visits = _get_visits(path)
     for neighbour in m[path[-1]]:
-        if _is_big(neighbour) or neighbour not in visited:
+        if (
+            _is_big(neighbour)
+            or neighbour not in visited
+            or (
+                not only_one_small_visit
+                and not two_small_visits
+                and neighbour != _START
+            )
+        ):
             yield tuple(itertools.chain(path, [neighbour]))
 
 
@@ -38,18 +68,17 @@ def _parse_input(lines: Iterable[str]) -> Map:
 def main(argv: list[str]) -> None:
     with open(argv[0]) as f:
         m = _parse_input(f)
-        start = Cave("start")
-        end = Cave("end")
-        complete_paths: set[tuple[Cave, ...]] = set()
-        incomplete_paths: set[tuple[Cave, ...]] = set([(start,)])
-        while incomplete_paths:
-            path = incomplete_paths.pop()
-            for extension in _explore(path, m):
-                if extension[-1] == end:
-                    complete_paths.add(extension)
-                else:
-                    incomplete_paths.add(extension)
-        print(len(complete_paths))
+        for only_one_small_visit in (True, False):
+            complete_paths: set[tuple[Cave, ...]] = set()
+            incomplete_paths: set[tuple[Cave, ...]] = set([(_START,)])
+            while incomplete_paths:
+                path = incomplete_paths.pop()
+                for extension in _explore(path, m, only_one_small_visit):
+                    if extension[-1] == _END:
+                        complete_paths.add(extension)
+                    else:
+                        incomplete_paths.add(extension)
+            print(len(complete_paths))
 
 
 if __name__ == "__main__":
