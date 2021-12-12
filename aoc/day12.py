@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 
+from __future__ import annotations
+
 import collections
-import itertools
+import functools
 import sys
 import typing
-from typing import Iterable, Iterator, Sequence
+from typing import Iterable, Iterator, NamedTuple
 
 
 Cave = typing.NewType("Cave", str)
@@ -15,44 +17,32 @@ _START = Cave("start")
 _END = Cave("end")
 
 
+@functools.cache
 def _is_big(cave: Cave) -> bool:
     """Return `True` if this cave is big."""
     return cave.isupper()
 
 
-def _get_visits(path: Sequence[Cave]) -> tuple[set[Cave], bool]:
-    """
-    Return which caves have been visited.
+class Path(NamedTuple):
+    """Path through caves; might be incomplete."""
 
-    The second element of the returned tuple is `True` if some small cave has
-    already been visited twice on this path, `False` otherwise.
-
-    """
-    visited: set[Cave] = set()
-    two_small_visits = False
-    for cave in path:
-        if cave in visited and not _is_big(cave):
-            two_small_visits = True
-        visited.add(cave)
-    return visited, two_small_visits
+    path: tuple[Cave, ...]
+    may_revisit_small: bool
 
 
-def _explore(
-    path: Sequence[Cave], m: Map, only_one_small_visit: bool
-) -> Iterator[tuple[Cave, ...]]:
-    """Yield all possible next steps for a path."""
-    visited, two_small_visits = _get_visits(path)
-    for neighbour in m[path[-1]]:
+def _explore(path: Path, m: Map) -> Iterator[Path]:
+    """Yield all possible extensions of this path."""
+    seen = set(path.path)
+    for neighbour in m[path.path[-1]]:
         if (
-            _is_big(neighbour)
-            or neighbour not in visited
-            or (
-                not only_one_small_visit
-                and not two_small_visits
-                and neighbour != _START
-            )
+            (big := _is_big(neighbour))
+            or (unseen_small := neighbour not in seen)
+            or (path.may_revisit_small and neighbour != _START)
         ):
-            yield tuple(itertools.chain(path, [neighbour]))
+            yield Path(
+                path.path + (neighbour,),
+                False if (not big and not unseen_small) else path.may_revisit_small,
+            )
 
 
 def _parse_input(lines: Iterable[str]) -> Map:
@@ -68,13 +58,13 @@ def _parse_input(lines: Iterable[str]) -> Map:
 def main(argv: list[str]) -> None:
     with open(argv[0]) as f:
         m = _parse_input(f)
-        for only_one_small_visit in (True, False):
-            complete_paths: set[tuple[Cave, ...]] = set()
-            incomplete_paths: set[tuple[Cave, ...]] = set([(_START,)])
+        for may_revisit_small in (False, True):
+            complete_paths: set[Path] = set()
+            incomplete_paths: set[Path] = set([Path((_START,), may_revisit_small)])
             while incomplete_paths:
                 path = incomplete_paths.pop()
-                for extension in _explore(path, m, only_one_small_visit):
-                    if extension[-1] == _END:
+                for extension in _explore(path, m):
+                    if extension.path[-1] == _END:
                         complete_paths.add(extension)
                     else:
                         incomplete_paths.add(extension)
