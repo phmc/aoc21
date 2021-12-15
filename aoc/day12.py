@@ -6,7 +6,7 @@ import collections
 import functools
 import sys
 import typing
-from typing import Iterable, Iterator, NamedTuple
+from typing import Iterable
 
 
 Cave = typing.NewType("Cave", str)
@@ -23,26 +23,38 @@ def _is_big(cave: Cave) -> bool:
     return cave.isupper()
 
 
-class Path(NamedTuple):
-    """Path through caves; might be incomplete."""
-
-    path: tuple[Cave, ...]
-    may_revisit_small: bool
-
-
-def _explore(path: Path, m: Map) -> Iterator[Path]:
-    """Yield all possible extensions of this path."""
-    seen = set(path.path)
-    for neighbour in m[path.path[-1]]:
-        if (
-            (big := _is_big(neighbour))
-            or (unseen_small := neighbour not in seen)
-            or (path.may_revisit_small and neighbour != _START)
-        ):
-            yield Path(
-                path.path + (neighbour,),
-                False if (not big and not unseen_small) else path.may_revisit_small,
-            )
+def _count_paths(m: Map, may_ever_revisit_small: bool) -> int:
+    """Count the number of paths from start to end."""
+    complete_paths = 0
+    pending: list[tuple[bool, frozenset[Cave], Cave]] = [
+        (may_ever_revisit_small, frozenset(), _START)
+    ]
+    while pending:
+        may_revisit_small, visited, cave = pending.pop()
+        for neighbour in m[cave]:
+            if neighbour == _END:
+                complete_paths += 1
+            elif neighbour == _START:
+                continue
+            elif _is_big(neighbour):
+                pending.append((may_revisit_small, visited, neighbour))
+            elif neighbour not in visited:
+                pending.append(
+                    (
+                        may_revisit_small,
+                        visited | set([neighbour]),
+                        neighbour,
+                    )
+                )
+            elif may_revisit_small and neighbour != _START:
+                pending.append(
+                    (
+                        False,
+                        visited | set([neighbour]),
+                        neighbour,
+                    )
+                )
+    return complete_paths
 
 
 def _parse_input(lines: Iterable[str]) -> Map:
@@ -59,16 +71,7 @@ def main(argv: list[str]) -> None:
     with open(argv[0]) as f:
         m = _parse_input(f)
         for may_revisit_small in (False, True):
-            complete_paths: set[Path] = set()
-            incomplete_paths: set[Path] = set([Path((_START,), may_revisit_small)])
-            while incomplete_paths:
-                path = incomplete_paths.pop()
-                for extension in _explore(path, m):
-                    if extension.path[-1] == _END:
-                        complete_paths.add(extension)
-                    else:
-                        incomplete_paths.add(extension)
-            print(len(complete_paths))
+            print(_count_paths(m, may_revisit_small))
 
 
 if __name__ == "__main__":
