@@ -77,15 +77,30 @@ def _parse_folds(lines: Iterator[str]) -> Iterator[Fold]:
         yield Fold(direction, position=int(position))
 
 
+def _print_grid(dots: Iterable[Point]) -> None:
+    """Plot the dots."""
+    dots = set(dots)
+    max_x = max(dot.x for dot in dots)
+    max_y = max(dot.y for dot in dots)
+    for y in range(max_y + 1):
+        for x in range(max_x + 1):
+            if (x, y) in dots:
+                print("#", end="")
+            else:
+                print(" ", end="")
+        print()
+
+
 def main(argv: list[str]) -> None:
     with open(argv[0]) as f:
         dots = set(_parse_dots(f))
         folds = _parse_folds(f)
+        fold = next(folds)
+        dots = set(_transform(dots, fold))
+        print(len(dots))
         for fold in folds:
             dots = set(_transform(dots, fold))
-            # One fold only for now!
-            break
-        print(len(dots))
+        _print_grid(dots)
 
 
 if __name__ == "__main__":
