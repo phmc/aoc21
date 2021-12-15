@@ -96,9 +96,7 @@ def _calculate_distance(costs: Costs, start: Point, end: Point) -> int:
                 distance[neighbour] = potential_distance
                 queue.update(neighbour, potential_distance)
 
-    result = distance[end]
-    assert result is not None
-    return result
+    return distance[end]
 
 
 def _parse_input(lines: Iterable[str]) -> Costs:
