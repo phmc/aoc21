@@ -4,7 +4,7 @@ import collections
 import itertools
 import sys
 import typing
-from typing import Iterable, Iterator, Mapping
+from typing import Iterable, Iterator, Mapping, Sequence
 
 
 # Pair of polymer bases
@@ -53,6 +53,15 @@ def _count_elements(
     )
 
 
+def _calculate_final_quantity(
+    pairs: collections.Counter[Pair], template: Sequence[Pair]
+) -> int:
+    """Return the final quantity for output."""
+    elements = _count_elements(pairs, template[0][0], template[-1][-1])
+    (_, most_count), *_, (_, least_count) = elements.most_common()
+    return most_count - least_count
+
+
 def _pairs(src: Iterable[str]) -> Iterator[tuple[str, str]]:
     """Yield consecutive character pairs from an iterable of characters."""
     it, incr_it = itertools.tee(iter(src), 2)
@@ -89,11 +98,10 @@ def main(argv: list[str]) -> None:
         template = list(_parse_template(f))
         pairs = collections.Counter(template)
         rules = _parse_rules(f)
-        for _ in range(10):
-            pairs = _run_pair_insertion(pairs, rules)
-        elements = _count_elements(pairs, template[0][0], template[-1][-1])
-        (_, most_count), *_, (_, least_count) = elements.most_common()
-        print(most_count - least_count)
+        for iterations in (10, 40 - 10):
+            for _ in range(iterations):
+                pairs = _run_pair_insertion(pairs, rules)
+            print(_calculate_final_quantity(pairs, template))
 
 
 if __name__ == "__main__":
