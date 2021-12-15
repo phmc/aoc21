@@ -2,10 +2,12 @@
 
 
 import collections
+import dataclasses
+import heapq
 import itertools
 import sys
 import typing
-from typing import Iterable, Iterator, Mapping, Optional, Tuple
+from typing import Generic, Iterable, Iterator, Mapping, Tuple
 
 
 Point = collections.namedtuple("Point", ["x", "y"])
@@ -13,6 +15,55 @@ Point.__doc__ = "Point in 2D space."
 
 # Cost of moving between adjacent points.
 Costs = Mapping[Tuple[Point, Point], int]
+
+# Bigger than any real distance...
+INFINITY = 2 ** 64 - 1
+
+T = typing.TypeVar("T")
+
+
+@dataclasses.dataclass(order=True)
+class _QElem(Generic[T]):
+    """Element in a priority queue."""
+
+    priority: int
+    valid: bool
+    item: T
+
+
+class PriorityQueue(Generic[T]):
+    """Boggo implementation of a priority queue using heapq as best we can."""
+
+    _heap: list[_QElem[T]]
+    _elements: dict[T, _QElem[T]]
+
+    def __init__(self, items: Iterable[T], priority: int) -> None:
+        self._heap = []
+        self._elements = {}
+        for item in items:
+            self.add(item, priority)
+
+    def add(self, item: T, priority: int) -> None:
+        """Add an item with the given priority."""
+        elem = _QElem(priority, True, item)
+        heapq.heappush(self._heap, elem)
+        self._elements[item] = elem
+
+    def update(self, item: T, priority: int) -> None:
+        """Update an item's priority."""
+        if (elem := self._elements.get(item, None)) is not None:
+            elem.valid = False
+        self.add(item, priority)
+
+    def pop(self) -> T:
+        """Pop the lowest-priority item."""
+        while self._heap:
+            elem = heapq.heappop(self._heap)
+            if elem.valid:
+                del self._elements[elem.item]
+                return elem.item
+        else:
+            raise ValueError("Popping from empty queue")
 
 
 def _get_neighbours(point: Point, points: set[Point]) -> Iterator[Point]:
@@ -28,45 +79,22 @@ def _get_neighbours(point: Point, points: set[Point]) -> Iterator[Point]:
     )
 
 
-T = typing.TypeVar("T")
-
-
-def _smallest_valued_remaining(
-    mapping: Mapping[T, Optional[int]], remaining: set[T]
-) -> T:
-    """Return the key with the smallest integer value."""
-    result: Optional[T] = None
-    least: int = 0
-    for candidate, value in mapping.items():
-        if value is not None and candidate in remaining:
-            if result is None or value < least:
-                result = candidate
-                least = value
-    assert result is not None
-    return result
-
-
 def _calculate_distance(costs: Costs, start: Point, end: Point) -> int:
     """Return the lowest total cost of all paths from one point to another."""
-    unvisited = set(itertools.chain.from_iterable(costs))
-    points = set(unvisited)
-    # None ==> arbitrarily far away
-    distance: dict[Point, Optional[int]] = {point: None for point in unvisited}
-    distance[start] = 0
+    points = set(itertools.chain.from_iterable(costs))
+    distance: dict[Point, int] = {start: 0}
+    queue = PriorityQueue(points, priority=INFINITY)
+    queue.update(start, 0)
 
-    current = start
-    while unvisited and current != end:
+    while True:
+        current = queue.pop()
+        if current == end:
+            break
         for neighbour in _get_neighbours(current, points):
-            if neighbour not in unvisited:
-                continue
-            current_distance = distance[current]
-            assert current_distance is not None
-            potential_distance = current_distance + costs[current, neighbour]
-            neighbour_distance = distance[neighbour]
-            if neighbour_distance is None or neighbour_distance > potential_distance:
+            potential_distance = distance[current] + costs[current, neighbour]
+            if neighbour not in distance or distance[neighbour] > potential_distance:
                 distance[neighbour] = potential_distance
-        unvisited.remove(current)
-        current = _smallest_valued_remaining(distance, unvisited)
+                queue.update(neighbour, potential_distance)
 
     result = distance[end]
     assert result is not None
