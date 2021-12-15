@@ -7,7 +7,7 @@ import heapq
 import itertools
 import sys
 import typing
-from typing import Generic, Iterable, Iterator, Mapping, Tuple
+from typing import Callable, Generic, Iterable, Iterator, Mapping, Tuple
 
 
 Point = collections.namedtuple("Point", ["x", "y"])
@@ -121,13 +121,44 @@ def _parse_input(lines: Iterable[str]) -> dict[Point, int]:
     }
 
 
+def _multiply_input(initial_input: dict[Point, int], n: int) -> dict[Point, int]:
+    """Multiply entry costs n times, according to the rules of part 2."""
+    result: dict[Point, int] = {}
+
+    def new_cost(idx: int, x: int, y: int) -> int:
+        nominal_cost = template[Point(x, y)] + idx
+        if nominal_cost > 9:
+            return nominal_cost % 10 + 1
+        else:
+            return nominal_cost
+
+    # Repeat horizontally first.
+    template = initial_input
+    upper_x = max(point.x for point in template) + 1
+    upper_y = max(point.y for point in template) + 1
+    for idx, x, y in itertools.product(range(n), range(upper_x), range(upper_y)):
+        result[Point(x + idx * upper_x, y)] = new_cost(idx, x, y)
+
+    # Now repeat that extended chunk vertically.
+    template = result
+    upper_x = max(point.x for point in template) + 1
+    for idx, x, y in itertools.product(range(n), range(upper_x), range(upper_y)):
+        result[Point(x, y + idx * upper_y)] = new_cost(idx, x, y)
+
+    return result
+
+
 def main(argv: list[str]) -> None:
     with open(argv[0]) as f:
-        entry_costs = _parse_input(f)
-        edge_costs = _get_edge_costs(entry_costs)
-        max_x = max(point.x for point in entry_costs)
-        max_y = max(point.y for point in entry_costs)
-        print(_calculate_distance(edge_costs, Point(0, 0), Point(max_x, max_y)))
+        initial_entry_costs = _parse_input(f)
+        for entry_costs in (
+            initial_entry_costs,
+            _multiply_input(initial_entry_costs, n=5),
+        ):
+            edge_costs = _get_edge_costs(entry_costs)
+            max_x = max(point.x for point in entry_costs)
+            max_y = max(point.y for point in entry_costs)
+            print(_calculate_distance(edge_costs, Point(0, 0), Point(max_x, max_y)))
 
 
 if __name__ == "__main__":

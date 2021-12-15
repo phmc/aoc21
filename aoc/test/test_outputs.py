@@ -38,7 +38,7 @@ import pytest
             ),
         ),
         (14, "2703", "2984946368465"),
-        (15, "745", ""),
+        (15, "745", "3002"),
     ],
 )
 def test_day_n(capsys: Any, n: int, pt1: str, pt2: str) -> None:
