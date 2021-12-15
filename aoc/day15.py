@@ -13,8 +13,8 @@ from typing import Callable, Generic, Iterable, Iterator, Mapping, Tuple
 Point = collections.namedtuple("Point", ["x", "y"])
 Point.__doc__ = "Point in 2D space."
 
-# Cost of moving between adjacent points.
-Costs = Mapping[Tuple[Point, Point], int]
+# Cost of moving to a point.
+Costs = Mapping[Point, int]
 
 # Bigger than any real distance...
 INFINITY = 2 ** 64 - 1
@@ -81,7 +81,7 @@ def _get_neighbours(point: Point, points: set[Point]) -> Iterator[Point]:
 
 def _calculate_distance(costs: Costs, start: Point, end: Point) -> int:
     """Return the lowest total cost of all paths from one point to another."""
-    points = set(itertools.chain.from_iterable(costs))
+    points = set(costs)
     distance: dict[Point, int] = {start: 0}
     queue = PriorityQueue(points, priority=INFINITY)
     queue.update(start, 0)
@@ -91,7 +91,7 @@ def _calculate_distance(costs: Costs, start: Point, end: Point) -> int:
         if current == end:
             break
         for neighbour in _get_neighbours(current, points):
-            potential_distance = distance[current] + costs[current, neighbour]
+            potential_distance = distance[current] + costs[neighbour]
             if neighbour not in distance or distance[neighbour] > potential_distance:
                 distance[neighbour] = potential_distance
                 queue.update(neighbour, potential_distance)
@@ -101,17 +101,7 @@ def _calculate_distance(costs: Costs, start: Point, end: Point) -> int:
     return result
 
 
-def _get_edge_costs(entry_costs: dict[Point, int]) -> Costs:
-    """Get adjacent-point movement costs from entry costs."""
-    points = set(entry_costs)
-    return {
-        (neighbour, point): cost
-        for point, cost in entry_costs.items()
-        for neighbour in _get_neighbours(point, points)
-    }
-
-
-def _parse_input(lines: Iterable[str]) -> dict[Point, int]:
+def _parse_input(lines: Iterable[str]) -> Costs:
     """Parse input lines into entry costs."""
     lines = (line.strip() for line in lines)
     return {
@@ -121,7 +111,7 @@ def _parse_input(lines: Iterable[str]) -> dict[Point, int]:
     }
 
 
-def _multiply_input(initial_input: dict[Point, int], n: int) -> dict[Point, int]:
+def _multiply_input(initial_costs: Costs, n: int) -> dict[Point, int]:
     """Multiply entry costs n times, according to the rules of part 2."""
     result: dict[Point, int] = {}
 
@@ -133,7 +123,7 @@ def _multiply_input(initial_input: dict[Point, int], n: int) -> dict[Point, int]
             return nominal_cost
 
     # Repeat horizontally first.
-    template = initial_input
+    template = initial_costs
     upper_x = max(point.x for point in template) + 1
     upper_y = max(point.y for point in template) + 1
     for idx, x, y in itertools.product(range(n), range(upper_x), range(upper_y)):
@@ -150,15 +140,14 @@ def _multiply_input(initial_input: dict[Point, int], n: int) -> dict[Point, int]
 
 def main(argv: list[str]) -> None:
     with open(argv[0]) as f:
-        initial_entry_costs = _parse_input(f)
-        for entry_costs in (
-            initial_entry_costs,
-            _multiply_input(initial_entry_costs, n=5),
+        initial_costs = _parse_input(f)
+        for costs in (
+            initial_costs,
+            _multiply_input(initial_costs, n=5),
         ):
-            edge_costs = _get_edge_costs(entry_costs)
-            max_x = max(point.x for point in entry_costs)
-            max_y = max(point.y for point in entry_costs)
-            print(_calculate_distance(edge_costs, Point(0, 0), Point(max_x, max_y)))
+            max_x = max(point.x for point in costs)
+            max_y = max(point.y for point in costs)
+            print(_calculate_distance(costs, Point(0, 0), Point(max_x, max_y)))
 
 
 if __name__ == "__main__":
