@@ -66,8 +66,8 @@ class PriorityQueue(Generic[T]):
             raise ValueError("Popping from empty queue")
 
 
-def _get_neighbours(point: Point, points: set[Point]) -> Iterator[Point]:
-    """Yield all neighbours of a point."""
+def _get_possible_neighbours(point: Point) -> Iterator[Point]:
+    """Yield all neighbours of a point (might not be part of the grid)."""
     yield from (
         Point(x, y)
         for x, y in (
@@ -75,7 +75,6 @@ def _get_neighbours(point: Point, points: set[Point]) -> Iterator[Point]:
             # Diagonals aren't connected.
             for dx, dy in [(0, 1), (0, -1), (1, 0), (-1, 0)]
         )
-        if (x, y) in points
     )
 
 
@@ -90,8 +89,11 @@ def _calculate_distance(costs: Costs, start: Point, end: Point) -> int:
         current = queue.pop()
         if current == end:
             break
-        for neighbour in _get_neighbours(current, points):
-            potential_distance = distance[current] + costs[neighbour]
+        for neighbour in _get_possible_neighbours(current):
+            try:
+                potential_distance = distance[current] + costs[neighbour]
+            except KeyError:
+                continue
             if neighbour not in distance or distance[neighbour] > potential_distance:
                 distance[neighbour] = potential_distance
                 queue.update(neighbour, potential_distance)
