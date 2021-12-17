@@ -1,12 +1,9 @@
 #!/usr/bin/env python3
 
-
 import collections
 import dataclasses
-import enum
-import itertools
 import sys
-from typing import Callable, Iterable, Iterator, Optional
+from typing import Iterable, Iterator, Optional
 
 
 Point = collections.namedtuple("Point", ["x", "y"])
@@ -29,15 +26,6 @@ class Area:
     def contains(self, p: Point) -> bool:
         """Does a point lie within this area?"""
         return self.min_x <= p.x <= self.max_x and self.min_y <= p.y <= self.max_y
-
-
-class TestResult(enum.Enum):
-    """Result of a test during a binary search."""
-
-    INCONCLUSIVE = 0
-    TOO_LOW = 1
-    OK = 2
-    TOO_HIGH = 3
 
 
 def _next_x_speed(speed: int) -> int:
@@ -86,70 +74,16 @@ def _fire(initial_p: Point, initial_v: Velocity, target: Area) -> Point:
     return collections.deque(_trajectory(initial_p, initial_v, target), maxlen=1)[0]
 
 
-def _do_binary_search(test: Callable[[int], TestResult]) -> Optional[int]:
-    """Find an integer that satisfies a test or `None` if no solution exists."""
-    lower_bound = 1
-    upper_bound: int
-
-    # Three steps:
-    #
-    # 1. Starting at 1, double until an initial upper bound is established.
-    # 2. Binary search in the [1, upper bound] interval until an OK value is found.
-    # 3. If we're missing the target for some value in the interval,
-    #    exhaustively test all remaining values.
-
-    for n in itertools.count():
-        candidate = 2 ** n
-        result = test(candidate)
-        assert result is not TestResult.INCONCLUSIVE
-        if test(candidate) is TestResult.TOO_LOW:
-            lower_bound = candidate
-        else:
-            upper_bound = candidate
-            break
-
-    while abs(upper_bound - lower_bound) > 0:
-        candidate = int((upper_bound + lower_bound) / 2)
-        result = test(candidate)
-        if result is TestResult.OK:
-            return candidate
-        elif result is TestResult.TOO_HIGH:
-            upper_bound = candidate
-        elif result is TestResult.TOO_LOW:
-            lower_bound = candidate
-        elif result is TestResult.INCONCLUSIVE:
-            break
-
-    if upper_bound != lower_bound:
-        for candidate in range(lower_bound, upper_bound + 1):
-            if test(candidate) is TestResult.OK:
-                return candidate
-
-    return None
-
-
-def _test_x_speed(initial_p: Point, test_v: Velocity, target: Area) -> TestResult:
-    """Evaluate the success of a candidate speed in the x direction."""
-    final_p = _fire(initial_p, test_v, target)
-    if final_p.x < target.min_x:
-        return TestResult.TOO_LOW
-    elif final_p.x > target.max_x:
-        return TestResult.TOO_HIGH
-    elif target.contains(final_p):
-        return TestResult.OK
-    else:
-        return TestResult.INCONCLUSIVE
-
-
 def _find_suitable_x_speed(
     initial_p: Point, initial_y_speed: int, target: Area
 ) -> Optional[int]:
     """Find an initial speed in the x direction that hits the target."""
-    return _do_binary_search(
-        lambda candidate: _test_x_speed(
-            initial_p, Velocity(candidate, initial_y_speed), target
-        )
-    )
+    # An upper bound is abs(target.max_x), so just try every value starting there!
+    for x in range(target.max_x, 0, -1):
+        if target.contains(_fire(initial_p, Velocity(x, initial_y_speed), target)):
+            return x
+    else:
+        return None
 
 
 def _find_max_y_speed(initial_p: Point, target: Area) -> Velocity:
@@ -173,14 +107,6 @@ def _find_max_y_speed(initial_p: Point, target: Area) -> Velocity:
 
 def _find_max_height(initial_p: Point, target: Area) -> int:
     """Find the maximum height that can be attained before finishing in the target."""
-    # When the projectile is passing through the line y=0 on its way down, its
-    # speed in the y direction must be greater than the speed at which it was
-    # launched.
-    #
-    # So (assuming that the target y range lies below the x axis) it's
-    # pointless trying any y speed greater than abs(target.min_y). This
-    # provides a definite upper bound; find the max value below this that
-    # works.
     return max(
         point.y
         for point in _trajectory(
