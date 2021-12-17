@@ -7,7 +7,7 @@ import heapq
 import itertools
 import sys
 import typing
-from typing import Callable, Generic, Iterable, Iterator, Mapping, Tuple
+from typing import Generic, Iterable, Iterator, Mapping
 
 
 Point = collections.namedtuple("Point", ["x", "y"])
